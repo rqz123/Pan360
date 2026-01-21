@@ -1,0 +1,38 @@
+# Git ignore file for Pan360 project
+
+# Captured images
+images/
+*.jpg
+*.jpeg
+*.png
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual environments
+venv/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+test/
+temp/

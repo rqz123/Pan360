@@ -1,0 +1,78 @@
+# Pan360 Configuration File
+# Configuration for 360° Panoramic Camera System
+
+# Stepper Motor Configuration
+motor:
+  # GPIO pins for ULN2003 driver (BCM numbering)
+  # Connect IN1, IN2, IN3, IN4 to these GPIO pins
+  gpio_pins: [17, 18, 27, 22]
+  
+  # Delay between steps (seconds) - lower = faster, but may skip steps
+  step_delay: 0.001
+  
+  # Steps per full 360° rotation (4096 for 28BYJ-48 with gear reduction)
+  steps_per_revolution: 4096
+
+# Camera Configuration
+camera:
+  # Image resolution (width, height)
+  # Pi Camera V2 max: 3280 x 2464
+  # Pi Camera V3 max: 4608 x 2592
+  # HQ Camera max: 4056 x 3040
+  resolution: [3280, 2464]
+  
+  # Output directory for captured images
+  output_dir: "images"
+  
+  # Stabilization delay after camera initialization (seconds)
+  # Increase if images are still dark or inconsistent
+  stabilization_delay: 2.0
+  
+  # Manual exposure settings (optional - camera will auto-meter first)
+  # Leave commented to use auto-metered values
+  exposure:
+    # Exposure time in microseconds (typical range: 10000-50000)
+    # Uncomment to override auto-metered exposure
+    # time: 30000
+    # Analogue gain (typical range: 1.0-8.0)
+    # Uncomment to override auto-metered gain
+    # gain: 2.0
+  
+  # White balance settings
+  white_balance:
+    red_gain: 1.5
+    blue_gain: 1.5
+
+# Scanning Configuration
+scan:
+  # Angle increment between captures (degrees)
+  # Smaller angle = more overlap = better stitching, but more images
+  # Recommended: 10-20 degrees
+  angle_increment: 15.0
+  
+  # Total rotation angle (360 for full panorama)
+  total_angle: 360.0
+  
+  # Settle time after motor movement before capture (seconds)
+  # Allows vibrations to dampen for sharp images
+  settle_time: 0.8
+  
+  # Direction of rotation (true = clockwise, false = counter-clockwise)
+  clockwise: true
+  
+  # Return to home position after scan
+  return_home: true
+
+# Advanced Settings
+advanced:
+  # Enable verbose logging
+  verbose: true
+  
+  # Create session subdirectories for each scan
+  use_session_dirs: true
+  
+  # Image format (jpg, png)
+  image_format: "jpg"
+  
+  # JPEG quality (1-100, only for jpg format)
+  jpeg_quality: 95

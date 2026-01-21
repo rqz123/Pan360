@@ -1,0 +1,18 @@
+# Pan360 Requirements
+# Python dependencies for 360° Panoramic Camera System
+
+# Raspberry Pi GPIO control
+RPi.GPIO>=0.7.1
+
+# Pi Camera support (Raspberry Pi OS Bookworm and later)
+picamera2>=0.3.12
+
+# Image processing
+Pillow>=10.0.0
+
+# Configuration file parsing
+PyYAML>=6.0
+
+# Optional: For advanced image stitching
+# opencv-python>=4.8.0
+# numpy>=1.24.0
