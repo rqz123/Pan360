@@ -13,6 +13,9 @@ Pillow>=10.0.0
 # Configuration file parsing
 PyYAML>=6.0
 
-# Optional: For advanced image stitching
-# opencv-python>=4.8.0
-# numpy>=1.24.0
+# Computer vision for panorama stitching
+opencv-python>=4.8.0
+opencv-contrib-python>=4.8.0
+
+# Numerical operations
+numpy>=1.24.0

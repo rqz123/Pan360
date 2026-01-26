@@ -48,7 +48,7 @@ scan:
   # Angle increment between captures (degrees)
   # Smaller angle = more overlap = better stitching, but more images
   # Recommended: 10-20 degrees
-  angle_increment: 15.0
+  angle_increment: 25.0
   
   # Total rotation angle (360 for full panorama)
   total_angle: 360.0
