@@ -16,6 +16,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 from stepper_motor import StepperMotor
 from camera_controller import CameraController
 from config import Config
+from upload_client import UploadClient
 
 
 class Pan360Scanner:
@@ -228,22 +229,110 @@ class Pan360Scanner:
 
 def main():
     """Main entry point."""
+    import argparse
+    
+    parser = argparse.ArgumentParser(description="Pan360 - 360° Panoramic Camera System")
+    parser.add_argument(
+        "--upload",
+        action="store_true",
+        help="Upload images to remote server for stitching"
+    )
+    parser.add_argument(
+        "--server",
+        help="Override server URL from config (e.g., http://192.168.1.100:8000)"
+    )
+    parser.add_argument(
+        "--algorithm",
+        choices=["simple_angle", "opencv_auto", "manual"],
+        help="Override stitching algorithm from config"
+    )
+    
+    args = parser.parse_args()
+    
     try:
         # Create and run scanner
         with Pan360Scanner() as scanner:
             # Run the scan
             images = scanner.scan()
             
-            print("\n" + "=" * 60)
-            print("Next Steps:")
-            print("=" * 60)
-            print("1. Review captured images in the 'images/' directory")
-            print("2. Use panorama stitching software to create the final panorama:")
-            print("   - Hugin (free, open-source)")
-            print("   - PTGui (commercial)")
-            print("   - Microsoft ICE (free, Windows)")
-            print("   - Or use Python: OpenCV with cv2.Stitcher")
-            print("=" * 60)
+            # Check if remote stitching is enabled
+            use_remote = args.upload or scanner.config.get("server", {}).get("enabled", False)
+            
+            if use_remote:
+                print("\n" + "=" * 60)
+                print("Remote Stitching")
+                print("=" * 60)
+                
+                # Get server configuration
+                server_url = args.server or scanner.config.get("server", {}).get("url", "http://localhost:8000")
+                algorithm = args.algorithm or scanner.config.get("server", {}).get("algorithm", "simple_angle")
+                timeout = scanner.config.get("server", {}).get("timeout", 300)
+                auto_download = scanner.config.get("server", {}).get("auto_download", True)
+                output_dir = Path(scanner.config.get("server", {}).get("output_dir", "output"))
+                
+                # Get algorithm parameters
+                params = scanner.config.get("server", {}).get("parameters", {})
+                blend_width = params.get("blend_width", 100)
+                confidence_threshold = params.get("confidence_threshold", 1.0)
+                
+                print(f"Server: {server_url}")
+                print(f"Algorithm: {algorithm}")
+                
+                # Create upload client
+                client = UploadClient(server_url, timeout=timeout)
+                
+                if not auto_download:
+                    # Just upload and get job ID
+                    job_id = client.upload_images(
+                        [Path(img) for img in images],
+                        algorithm=algorithm,
+                        blend_width=blend_width,
+                        confidence_threshold=confidence_threshold
+                    )
+                    
+                    if job_id:
+                        print(f"\n✓ Images uploaded successfully!")
+                        print(f"  Job ID: {job_id}")
+                        print(f"  Check status: {server_url}/api/v1/status/{job_id}")
+                        print(f"  Download when ready: {server_url}/api/v1/download/{job_id}")
+                    else:
+                        print("\n✗ Upload failed")
+                else:
+                    # Upload and wait for result
+                    output_dir.mkdir(parents=True, exist_ok=True)
+                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                    output_file = output_dir / f"panorama_remote_{timestamp}.jpg"
+                    
+                    success = client.upload_and_stitch(
+                        [Path(img) for img in images],
+                        output_file,
+                        algorithm=algorithm,
+                        blend_width=blend_width,
+                        confidence_threshold=confidence_threshold
+                    )
+                    
+                    if success:
+                        print(f"\n✓ Remote stitching completed!")
+                        print(f"  Output: {output_file}")
+                    else:
+                        print("\n✗ Remote stitching failed")
+                
+                print("=" * 60)
+            else:
+                print("\n" + "=" * 60)
+                print("Next Steps:")
+                print("=" * 60)
+                print("1. Review captured images in the 'images/' directory")
+                print("2. Stitch locally using:")
+                print("   python src/stitch_compare.py")
+                print("3. Or use panorama stitching software:")
+                print("   - Hugin (free, open-source)")
+                print("   - PTGui (commercial)")
+                print("   - Microsoft ICE (free, Windows)")
+                print("\nTo enable remote stitching:")
+                print("   python src/pan360.py --upload")
+                print("   or set server.enabled: true in config.yaml")
+                print("=" * 60)
     
     except KeyboardInterrupt:
         print("\n\nOperation cancelled by user")

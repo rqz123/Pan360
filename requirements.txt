@@ -13,6 +13,9 @@ Pillow>=10.0.0
 # Configuration file parsing
 PyYAML>=6.0
 
+# HTTP client for remote stitching
+requests>=2.32.0
+
 # Computer vision for panorama stitching
 opencv-python>=4.8.0
 opencv-contrib-python>=4.8.0

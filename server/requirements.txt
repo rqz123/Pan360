@@ -1,0 +1,21 @@
+# Server Requirements
+# Install on PC/server for panorama stitching service
+
+# Web framework
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+
+# File upload handling
+python-multipart==0.0.20
+
+# HTTP client (for testing)
+requests==2.32.3
+
+# Image processing
+opencv-python==4.13.0.81
+opencv-contrib-python==4.13.0.81
+numpy==2.2.3
+Pillow==11.1.0
+
+# Configuration
+PyYAML==6.0.2

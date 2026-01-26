@@ -76,3 +76,29 @@ advanced:
   
   # JPEG quality (1-100, only for jpg format)
   jpeg_quality: 95
+
+# Remote Stitching Server Configuration
+server:
+  # Enable remote stitching (if false, stitch locally)
+  enabled: false
+  
+  # Server URL (e.g., http://192.168.1.100:8000)
+  url: "http://localhost:8000"
+  
+  # Upload timeout in seconds
+  timeout: 300
+  
+  # Stitching algorithm to use on server
+  # Options: simple_angle, opencv_auto, manual
+  algorithm: "simple_angle"
+  
+  # Algorithm-specific parameters
+  parameters:
+    blend_width: 100  # For simple_angle
+    confidence_threshold: 1.0  # For opencv_auto
+  
+  # Auto-download result after stitching
+  auto_download: true
+  
+  # Output directory for downloaded panoramas
+  output_dir: "output"
