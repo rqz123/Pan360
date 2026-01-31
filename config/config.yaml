@@ -77,6 +77,25 @@ advanced:
   # JPEG quality (1-100, only for jpg format)
   jpeg_quality: 95
 
+# Stitching Configuration
+stitching:
+  # Default stitching algorithm to use
+  # Options: opencv, manual, sensor_aided
+  algorithm: "opencv"
+  
+  # Algorithms to compare (used by stitch_compare.py)
+  compare_algorithms:
+    - opencv
+    - sensor_aided
+    - manual
+  
+  # Window ratio for incremental stitching (0.5-1.0)
+  # Use 0.85 (85%) for optimal balance between overlap and quality
+  window_ratio: 0.85
+  
+  # Stop on first failure or continue
+  stop_on_failure: true
+
 # Remote Stitching Server Configuration
 server:
   # Enable remote stitching (if false, stitch locally)

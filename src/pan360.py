@@ -301,7 +301,7 @@ def main():
                     # Upload and wait for result
                     output_dir.mkdir(parents=True, exist_ok=True)
                     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                    output_file = output_dir / f"panorama_remote_{timestamp}.jpg"
+                    output_file = output_dir / f"panorama_{algorithm}_{timestamp}.jpg"
                     
                     success = client.upload_and_stitch(
                         [Path(img) for img in images],

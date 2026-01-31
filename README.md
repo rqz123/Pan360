@@ -35,6 +35,16 @@ A Raspberry Pi-based automated panoramic camera system that captures 360° image
 4. Ensure the camera can rotate freely 360° without obstruction
 5. Level the camera for horizontal panoramas
 
+### ⚠️ Important: Nodal Point Alignment
+
+**To prevent ghosting/parallax errors, the camera must rotate around its entrance pupil (nodal point).**
+
+- **Nodal Point**: The optical center where light converges (~2-3mm behind lens front for Pi Camera V2)
+- **Parallax**: When rotation axis ≠ nodal point, causing foreground/background misalignment
+- **Solution**: Use adjustable mount to position camera so nodal point is on rotation axis
+
+**Quick Test**: Place a close object and distant object in view. Rotate camera. If they shift relative to each other, adjust camera forward/backward until no relative movement occurs.
+
 ## Software Installation
 
 ### 1. Update System
@@ -142,6 +152,7 @@ scan:
 - **10°**: High overlap, best quality, 36 images
 - **15°**: Good overlap, balanced, 24 images
 - **20°**: Minimal overlap, faster scan, 18 images
+- **25°**: Current setting (15 images) - requires precise nodal alignment
 
 ## Usage
 
@@ -191,8 +202,8 @@ Starting Panoramic Scan
 ============================================================
 Session ID: 20260120_143052
 Total rotation: 360°
-Angle increment: 15°
-Number of images: 24
+Angle increment: 25°
+Number of images: 15
 ============================================================
 
 Image 1/24
@@ -206,59 +217,227 @@ Saved: images/pan360_20260120_143052_angle_000.00.jpg
 ============================================================
 Scan Complete!
 ============================================================
-Total images captured: 24
-Total time: 156.3s (2.6 minutes)
+Total images captured: 15
+Total time: 93.5s (1.6 minutes)
 Images saved to: images/
 ============================================================
 ```
 
-## Creating the Panorama
+## Workflow Overview
 
-After capturing images, use stitching software:
+Pan360 supports **two workflows** for creating panoramas:
 
-### Option 1: Hugin (Free, Recommended)
+```
+┌─────────────────────────────────────────────────────────┐
+│  WORKFLOW 1: Hybrid (Pi Capture + PC/Server Stitching) │
+│  ────────────────────────────────────────────────────── │
+│  1. Pi captures images                                  │
+│  2. Pi uploads to server                                │
+│  3. Server stitches using AI algorithms                 │
+│  4. Pi downloads result                                 │
+│  ✓ Fast on Pi, powerful processing on PC                │
+└─────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────┐
+│  WORKFLOW 2: Local (All on Raspberry Pi)                │
+│  ────────────────────────────────────────────────────── │
+│  1. Pi captures images                                  │
+│  2. Pi stitches locally                                 │
+│  3. Result saved on Pi                                  │
+│  ⚠ Slower, limited by Pi CPU                           │
+└─────────────────────────────────────────────────────────┘
+```
+
+## Workflow 1: Hybrid Pi-PC Stitching (Recommended)
+
+This workflow lets the Pi focus on capturing while offloading intensive stitching to a more powerful PC/server.
+
+### Prerequisites
+
+1. **PC/Server Setup**: See [README_SERVER.md](README_SERVER.md) for detailed instructions
+2. **Network**: Pi and PC on same network (or port forwarding configured)
+3. **Server Running**: Stitching server must be active on PC
+
+### Quick Start
+
+#### 1. Start Server on PC/Windows:
+```bash
+cd C:\Works\Pan360\server
+python stitching_server.py --host 0.0.0.0 --port 8000
+```
+
+#### 2. Configure Pi to Use Server:
+
+**Option A: Edit config.yaml (persistent)**
+```yaml
+server:
+  enabled: true
+  url: "http://192.168.5.138:8000"  # Your PC's IP
+  algorithm: "simple_angle"
+  auto_download: true
+  output_dir: "output"
+```
+
+**Option B: Use command-line flags (temporary)**
+```bash
+# No configuration needed
+```
+
+#### 3. Run Capture on Pi:
 
 ```bash
-# Install Hugin
-sudo apt-get install hugin
+cd ~/Works/Pan360
+source venv/bin/activate
 
-# Launch Hugin
-hugin
+# With config.yaml server.enabled: true
+python src/pan360.py
+
+# OR use --upload flag
+python src/pan360.py --upload --server http://192.168.5.138:8000
 ```
 
-1. Load all images from the session
-2. Create control points (auto-align)
-3. Optimize and stitch
-4. Export final panorama
-
-### Option 2: Python OpenCV
-
-```python
-import cv2
-import glob
-
-# Load images
-images = []
-for filename in sorted(glob.glob('images/pan360_*_angle_*.jpg')):
-    img = cv2.imread(filename)
-    images.append(img)
-
-# Stitch
-stitcher = cv2.Stitcher.create()
-status, panorama = stitcher.stitch(images)
-
-if status == cv2.Stitcher_OK:
-    cv2.imwrite('panorama.jpg', panorama)
-    print("Panorama created successfully!")
-else:
-    print("Stitching failed")
+#### 4. Automatic Process:
+```
+[Pi] Capturing images...          ████████████ (30s)
+[Pi] Uploading to server...       ████████████ (15s)
+[Server] Stitching panorama...    ████████████ (120s)
+[Pi] Downloading result...        ████████████ (5s)
+✓ Panorama saved to output/panorama_remote_20260126_143052.jpg
 ```
 
-### Option 3: Commercial Software
+### Manual Upload (Optional)
 
-- **PTGui** (Windows/Mac) - Professional results
-- **Microsoft ICE** (Windows) - Free, easy to use
+Upload existing images without new capture:
+
+```bash
+# Auto-discover images in images/ directory
+python src/upload_client.py
+
+# Or specify images explicitly
+python src/upload_client.py images/angle_*.jpg --server http://192.168.5.138:8000
+```
+
+### Available Stitching Algorithms
+
+| Algorithm | Description | Speed | Quality | Recommended |
+|-----------|-------------|-------|---------|-------------|
+| **simple_angle** | Geometric placement using known angles | Fast | Excellent | ✓ Yes |
+| **opencv_auto** | OpenCV automatic stitcher | Medium | Good | For testing |
+| **manual** | Feature-based manual pipeline | Slow | Variable | For research |
+
+Change algorithm:
+```bash
+python src/pan360.py --upload --algorithm opencv_auto
+```
+
+### Monitor Server
+
+View API documentation at: **http://192.168.5.138:8000/docs**
+
+Check server health:
+```bash
+curl http://192.168.5.138:8000/health
+```
+
+---
+
+## Workflow 2: Local Stitching on Pi
+
+Stitch directly on Raspberry Pi without a server.
+
+### Prerequisites
+
+Install OpenCV on Pi:
+```bash
+source venv/bin/activate
+pip install opencv-python opencv-contrib-python
+```
+
+### Process
+
+#### 1. Capture Images:
+```bash
+python src/pan360.py
+# Images saved to images/angle_000.jpg ... angle_350.jpg
+```
+
+#### 2. Stitch Locally:
+```bash
+# Compare all algorithms
+python src/stitch_compare.py
+
+# Or use specific stitcher
+python -c "
+from stitching import SimpleAngleStitcher
+from pathlib import Path
+
+images = sorted(Path('images').glob('angle_*.jpg'))
+stitcher = SimpleAngleStitcher()
+pano, stats = stitcher.stitch([str(i) for i in images])
+stitcher.save_result(pano, 'output/panorama_local.jpg')
+"
+```
+
+#### 3. Result:
+```
+✓ Panorama saved to output/panorama_local.jpg
+⚠ Processing time: ~120-300s (depending on Pi model)
+```
+
+### Third-Party Stitching Software
+
+Transfer images to PC and use:
+
+**Free Options:**
+- **Hugin** (Linux/Windows/Mac) - Professional, open-source
+- **Microsoft ICE** (Windows) - Easy to use
+
+**Commercial:**
+- **PTGui** (Windows/Mac) - Industry standard
 - **Autopano** - Legacy but powerful
+
+---
+
+## Workflow Comparison
+
+| Feature | Hybrid (Pi+PC) | Local (Pi Only) |
+|---------|----------------|-----------------|
+| **Setup Complexity** | Medium | Simple |
+| **Capture Speed** | Fast | Fast |
+| **Stitching Speed** | Fast (PC) | Slow (Pi CPU) |
+| **Quality** | High | High |
+| **Pi CPU Usage** | Low | High |
+| **Network Required** | Yes | No |
+| **Best For** | Production use | Testing, offline |
+
+---
+
+## Quick Reference Commands
+
+### Hybrid Workflow
+```bash
+# Start server (on PC)
+cd C:\Works\Pan360\server
+python stitching_server.py
+
+# Capture and upload (on Pi)
+python src/pan360.py --upload --server http://192.168.5.138:8000
+```
+
+### Local Workflow
+```bash
+# Capture (on Pi)
+python src/pan360.py
+
+# Stitch (on Pi)
+python src/stitch_compare.py
+```
+
+### Manual Upload
+```bash
+# Upload existing images
+python src/upload_client.py
+```
 
 ## Troubleshooting
 
@@ -300,6 +479,18 @@ motor.cleanup()
 - Ensure consistent lighting across all captures
 - Check that images are sharp and well-focused
 - Manually adjust exposure settings if needed
+
+### Ghosting / Parallax Artifacts
+
+**Symptom:** Double images, misaligned overlaps
+
+**Cause:** Camera not rotating around nodal point
+
+**Solutions:**
+1. Adjust camera position on mount (forward/backward)
+2. Test with close + distant objects until no parallax
+3. Increase overlap: use 15° or 10° angle increment
+4. Keep subjects >3m away to minimize parallax effects
 
 ## Advanced Usage
 
@@ -345,25 +536,48 @@ python3 -c "from src.camera_controller import CameraController; c = CameraContro
 ```
 Pan360/
 ├── config/
-│   └── config.yaml          # Configuration file
-├── images/                  # Captured images (auto-created)
+│   └── config.yaml              # Configuration file
+├── images/                      # Captured images (auto-created)
+├── output/                      # Stitched panoramas (auto-created)
 ├── src/
-│   ├── pan360.py           # Main application
-│   ├── stepper_motor.py    # Motor controller
-│   ├── camera_controller.py # Camera controller
-│   └── config.py           # Config loader
-├── requirements.txt         # Python dependencies
-└── README.md               # This file
+│   ├── pan360.py               # Main capture application
+│   ├── stepper_motor.py        # Motor controller
+│   ├── camera_controller.py    # Camera controller
+│   ├── config.py               # Config loader
+│   ├── upload_client.py        # Upload client for hybrid workflow
+│   ├── check_server.py         # Server status checker
+│   ├── stitch_compare.py       # Local stitching comparison tool
+│   └── stitching/              # Stitching algorithms
+│       ├── base_stitcher.py            # Abstract base class
+│       ├── simple_angle_stitcher.py    # Angle-based (recommended)
+│       ├── opencv_auto_stitcher.py     # OpenCV automatic
+│       └── manual_stitcher.py          # Manual pipeline
+├── server/                      # PC/Server components
+│   ├── stitching_server.py     # REST API server
+│   └── requirements.txt        # Server dependencies
+├── requirements.txt             # Pi dependencies
+├── README.md                   # Main documentation (this file)
+└── README_SERVER.md            # Server setup guide
 ```
 
 ## Tips for Best Results
 
-1. **Lighting**: Use consistent lighting, avoid direct sunlight changes
-2. **Focus**: Lock focus for all images (manual focus mode)
-3. **Exposure**: Use manual exposure to maintain brightness
-4. **Overlap**: 30-50% overlap between images works best
-5. **Stability**: Mount on a stable, level surface
-6. **Height**: Position at average eye level for best perspective
+1. **Nodal Point Alignment** (Critical for quality):
+   - Camera must rotate around entrance pupil to prevent ghosting
+   - Test: no relative movement between close/distant objects when rotating
+   - Use adjustable mount for precise positioning
+
+2. **Lighting**: Use consistent lighting, avoid sunlight changes during scan
+
+3. **Focus**: Lock focus for all images
+
+4. **Overlap**: 30-50% overlap (15-20° angle increment)
+
+5. **Stability**: Stable mount, adequate settle_time (0.8-1.5s)
+
+6. **Distance**: Keep subjects >3m away to minimize parallax
+
+7. **Algorithm**: Use `simple_angle` for motorized panoramas with known angles
 
 ## License
 

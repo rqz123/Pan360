@@ -281,20 +281,26 @@ def main():
     parser = argparse.ArgumentParser(description="Upload images to Pan360 stitching server")
     parser.add_argument(
         "images",
-        nargs="+",
+        nargs="*",
         type=Path,
-        help="Image files to upload"
+        help="Image files to upload (if not specified, auto-discovers latest from images/)"
+    )
+    parser.add_argument(
+        "--images-dir",
+        type=Path,
+        default=Path("images"),
+        help="Directory to search for images (default: images/)"
     )
     parser.add_argument(
         "--server",
-        default="http://localhost:8000",
-        help="Server URL (default: http://localhost:8000)"
+        default="http://192.168.5.138:8000",
+        help="Server URL (default: http://192.168.5.138:8000)"
     )
     parser.add_argument(
         "--output",
         type=Path,
-        default=Path("panorama_remote.jpg"),
-        help="Output file path"
+        default=None,
+        help="Output file path (default: auto-generated with algorithm name)"
     )
     parser.add_argument(
         "--algorithm",
@@ -317,8 +323,35 @@ def main():
     
     args = parser.parse_args()
     
+    # Auto-discover images if not specified
+    if not args.images:
+        print(f"No images specified, searching in {args.images_dir}...")
+        
+        # Look for angle_*.jpg pattern
+        image_paths = sorted(args.images_dir.glob("angle_*.jpg"))
+        
+        if not image_paths:
+            # Fallback to any .jpg files
+            image_paths = sorted(args.images_dir.glob("*.jpg"))
+        
+        if not image_paths:
+            print(f"✗ No images found in {args.images_dir}")
+            print(f"  Please specify image files or check the directory path")
+            sys.exit(1)
+        
+        print(f"✓ Found {len(image_paths)} images")
+        args.images = image_paths
+    
     # Create client
     client = UploadClient(args.server, timeout=args.timeout)
+    
+    # Auto-generate output filename if not specified
+    if args.output is None:
+        from datetime import datetime
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        output_dir = Path("output")
+        output_dir.mkdir(parents=True, exist_ok=True)
+        args.output = output_dir / f"panorama_{args.algorithm}_{timestamp}.jpg"
     
     # Process
     success = client.upload_and_stitch(

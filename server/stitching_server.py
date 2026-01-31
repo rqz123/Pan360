@@ -22,7 +22,7 @@ import json
 # Add parent directory to path to import stitching modules
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from stitching import SimpleAngleStitcher, OpenCVAutoStitcher, ManualStitcher
+from stitching import OpenCVAutoStitcher, ManualStitcher, SensorAidedStitcher
 
 app = FastAPI(
     title="Pan360 Stitching Server",
@@ -83,8 +83,12 @@ def process_stitching_job(job_id: str, algorithm: str, blend_width: int, confide
         jobs[job_id]["message"] = f"Found {len(image_files)} images, initializing stitcher..."
         
         # Initialize stitcher
-        if algorithm == "simple_angle":
-            stitcher = SimpleAngleStitcher(blend_width=blend_width)
+        if algorithm == "sensor_aided":
+            stitcher = SensorAidedStitcher(
+                blend_width=blend_width,
+                debug_mode=False,
+                use_fine_tuning=True
+            )
         elif algorithm == "opencv_auto":
             stitcher = OpenCVAutoStitcher(confidence_threshold=confidence_threshold)
         elif algorithm == "manual":
